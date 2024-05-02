@@ -1,6 +1,5 @@
 import math
 import random
-import numpy as np
 import matplotlib.pyplot as plt
 import scipy.stats as stats
 from tabulate import tabulate
@@ -170,11 +169,6 @@ def acomodar_frec(matriz, intervalos):
                 matriz['Frec Obs'][i - 1] += matriz['Frec Obs'][i]
                 matriz['Frec Esp'][i - 1] += matriz['Frec Esp'][i]
                 matriz['Chi 2'][i - 1] += matriz['Chi 2'][i]
-                matriz['Prob obs'][i - 1] += matriz['Prob obs'][i]
-                matriz['Prob esp'][i - 1] += matriz['Prob esp'][i]
-                matriz['Prob obs ac'][i - 1] = matriz['Prob obs ac'][i]
-                matriz['Prob esp ac'][i - 1] = matriz['Prob esp ac'][i]
-                matriz['KS'][i - 1] += matriz['KS'][i]
 
                 # Eliminar la fila actual(ultima fila) ya que la sume con la anterior
                 del matriz['Intervalo'][i]
@@ -183,11 +177,6 @@ def acomodar_frec(matriz, intervalos):
                 del matriz['Frec Obs'][i]
                 del matriz['Frec Esp'][i]
                 del matriz['Chi 2'][i]
-                del matriz['Prob obs'][i]
-                del matriz['Prob esp'][i]
-                del matriz['Prob obs ac'][i]
-                del matriz['Prob esp ac'][i]
-                del matriz['KS'][i]
 
                 # Salir del while debido a que no tengo mas intervalos
                 break
@@ -225,11 +214,6 @@ def acomodar_frec(matriz, intervalos):
                 matriz['Frec Obs'][i] = sum(matriz['Frec Obs'][i:j])
                 matriz['Frec Esp'][i] = sum(matriz['Frec Esp'][i:j])
                 matriz['Chi 2'][i] = sum(matriz['Chi 2'][i:j])
-                matriz['Prob obs'][i] = sum(matriz['Prob obs'][i:j])
-                matriz['Prob esp'][i] = sum(matriz['Prob esp'][i:j])
-                matriz['Prob obs ac'][i] = max(matriz['Prob obs ac'][i:j])
-                matriz['Prob esp ac'][i] = max(matriz['Prob esp ac'][i:j])
-                matriz['KS'][i] = sum(matriz['KS'][i:j])
 
                 # Eliminar las filas que esten entre i y j
                 del matriz['Intervalo'][i + 1:j]
@@ -238,11 +222,6 @@ def acomodar_frec(matriz, intervalos):
                 del matriz['Frec Obs'][i + 1:j]
                 del matriz['Frec Esp'][i + 1:j]
                 del matriz['Chi 2'][i + 1:j]
-                del matriz['Prob obs'][i + 1:j]
-                del matriz['Prob esp'][i + 1:j]
-                del matriz['Prob obs ac'][i + 1:j]
-                del matriz['Prob esp ac'][i + 1:j]
-                del matriz['KS'][i + 1:j]
 
                 # Actualizar el número de filas
                 num_filas = len(matriz['Frec Esp'])
@@ -263,19 +242,23 @@ def graficar(datos, intervalos):
     plt.grid(False)
     plt.show()
 
-def formatearMatriz(matriz):
+
+def formatearMatriz(matriz, tieneKS):
     matriz['Lim Inf'] = [f"{x:.4f}" for x in matriz['Lim Inf']]
     matriz['Lim Sup'] = [f"{x:.4f}" for x in matriz['Lim Sup']]
     matriz['Frec Obs'] = [f"{x:.4f}" for x in matriz['Frec Obs']]
     matriz['Frec Esp'] = [f"{x:.4f}" for x in matriz['Frec Esp']]
     matriz['Chi 2'] = [f"{x:.4f}" for x in matriz['Chi 2']]
-    matriz['Prob obs'] = [f"{x:.4f}" for x in matriz['Prob obs']]
-    matriz['Prob esp'] = [f"{x:.4f}" for x in matriz['Prob esp']]
-    matriz['Prob obs ac'] = [f"{x:.4f}" for x in matriz['Prob obs ac']]
-    matriz['Prob esp ac'] = [f"{x:.4f}" for x in matriz['Prob esp ac']]
-    matriz['KS'] = [f"{x:.4f}" for x in matriz['KS']]
+
+    if(tieneKS):
+        matriz['Prob obs'] = [f"{x:.4f}" for x in matriz['Prob obs']]
+        matriz['Prob esp'] = [f"{x:.4f}" for x in matriz['Prob esp']]
+        matriz['Prob obs ac'] = [f"{x:.4f}" for x in matriz['Prob obs ac']]
+        matriz['Prob esp ac'] = [f"{x:.4f}" for x in matriz['Prob esp ac']]
+        matriz['KS'] = [f"{x:.4f}" for x in matriz['KS']]
 
     return matriz
+
 
 def main():
     opcion = -1
@@ -363,9 +346,15 @@ def main():
                   'KS': ks
                   }
 
-        # print(tabulate(matriz, headers="keys", tablefmt="double_grid", numalign="center"))
+        matrizChi2 = {'Intervalo': list(range(1, intervalos + 1)),
+                      'Lim Inf': lim_inf.copy(),
+                      'Lim Sup': lim_sup.copy(),
+                      'Frec Obs': frec_obs.copy(),
+                      'Frec Esp': frec_esp.copy(),
+                      'Chi 2': chi_cuadrado.copy(),
+                      }
 
-        matrizAcumulada = acomodar_frec(matriz, intervalos)
+        matrizAcumulada = acomodar_frec(matrizChi2, intervalos)
         matrizAcumulada['Chi 2'] = calcular_chi_cuadrado(matrizAcumulada['Frec Obs'],
                                                          matrizAcumulada['Frec Esp'],
                                                          len(matrizAcumulada['Frec Esp']))
@@ -377,10 +366,12 @@ def main():
             ks_tabulado = ksone.ppf(nivel_confianza + 0.05, n)
         else:
             ks_tabulado = 1.22 / math.sqrt(n)
-        ks_max = max(matrizAcumulada['KS'])
+        ks_max = max(matriz['KS'])
 
-        matrizAcumulada = formatearMatriz(matrizAcumulada)
+        matriz = formatearMatriz(matriz, True)
+        print(tabulate(matriz, headers="keys", tablefmt="double_grid", numalign="center"))
 
+        matrizAcumulada = formatearMatriz(matrizAcumulada, False)
         print(tabulate(matrizAcumulada, headers="keys", tablefmt="double_grid", numalign="center"))
 
         if chi2_calc <= chi_tabulado:
